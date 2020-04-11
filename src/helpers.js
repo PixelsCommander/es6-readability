@@ -87,37 +87,39 @@ var grabArticle = module.exports.grabArticle = (document, preserveUnlikelyCandid
    * TODO: Shouldn't this be a reverse traversal?
    **/
   var nodes = document.getElementsByTagName('*');
-  for (var i = 0; i < nodes.length; ++i) {
-    var node = nodes[i];
-    // Remove unlikely candidates */
-    var continueFlag = false;
-    if (!preserveUnlikelyCandidates) {
-      var unlikelyMatchString = node.className + node.id;
-      if (unlikelyMatchString.search(regexps.unlikelyCandidatesRe) !== -1 && unlikelyMatchString.search(regexps.okMaybeItsACandidateRe) == -1 && node.tagName !== 'HTML' && node.tagName !== "BODY") {
-        dbg("Removing unlikely candidate - " + unlikelyMatchString);
-        node.parentNode.removeChild(node);
-        continueFlag = true;
+  if (nodes.length < 5000) {
+    for (var i = 0; i < nodes.length; ++i) {
+      var node = nodes[i];
+      // Remove unlikely candidates */
+      var continueFlag = false;
+      if (!preserveUnlikelyCandidates) {
+        var unlikelyMatchString = node.className + node.id;
+        if (unlikelyMatchString.search(regexps.unlikelyCandidatesRe) !== -1 && unlikelyMatchString.search(regexps.okMaybeItsACandidateRe) == -1 && node.tagName !== 'HTML' && node.tagName !== "BODY") {
+          dbg("Removing unlikely candidate - " + unlikelyMatchString);
+          node.parentNode.removeChild(node);
+          continueFlag = true;
+        }
       }
-    }
 
-    // Turn all divs that don't have children block level elements into p's
-    if (!continueFlag && node.tagName === 'DIV') {
-      if (node.innerHTML.search(regexps.divToPElementsRe) === -1) {
-        dbg("Altering div to p");
-        var newNode = document.createElement('p');
-        newNode.innerHTML = node.innerHTML;
-        node.parentNode.replaceChild(newNode, node);
-      } else {
-        // EXPERIMENTAL
-        Array.prototype.slice.call(node.childNodes).forEach(function(childNode) {
-          if (childNode.nodeType == 3 /*TEXT_NODE*/ ) {
-            // use span instead of p. Need more tests.
-            dbg("replacing text node with a span tag with the same content.");
-            var span = document.createElement('span');
-            span.innerHTML = childNode.nodeValue;
-            childNode.parentNode.replaceChild(span, childNode);
-          }
-        });
+      // Turn all divs that don't have children block level elements into p's
+      if (!continueFlag && node.tagName === 'DIV') {
+        if (node.innerHTML.search(regexps.divToPElementsRe) === -1) {
+          dbg("Altering div to p");
+          var newNode = document.createElement('p');
+          newNode.innerHTML = node.innerHTML;
+          node.parentNode.replaceChild(newNode, node);
+        } else {
+          // EXPERIMENTAL
+          Array.prototype.slice.call(node.childNodes).forEach(function(childNode) {
+            if (childNode.nodeType == 3 /*TEXT_NODE*/ ) {
+              // use span instead of p. Need more tests.
+              dbg("replacing text node with a span tag with the same content.");
+              var span = document.createElement('span');
+              span.innerHTML = childNode.nodeValue;
+              childNode.parentNode.replaceChild(span, childNode);
+            }
+          });
+        }
       }
     }
   }
