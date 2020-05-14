@@ -133,41 +133,43 @@ var grabArticle = module.exports.grabArticle = (document, preserveUnlikelyCandid
   var allParagraphs = document.getElementsByTagName("p");
   var candidates = [];
 
-  for (var i = 0; i < allParagraphs.length; ++i) {
-    var paragraph = allParagraphs[i];
-    var parentNode = paragraph.parentNode;
-    var grandParentNode = parentNode.parentNode;
-    var innerText = getInnerText(paragraph);
+  if (allParagraphs.length < 5000) {
+    for (var i = 0; i < allParagraphs.length; ++i) {
+      var paragraph = allParagraphs[i];
+      var parentNode = paragraph.parentNode;
+      var grandParentNode = parentNode.parentNode;
+      var innerText = getInnerText(paragraph);
 
-    // If this paragraph is less than 25 characters, don't even count it.
-    if (innerText.length < 25) continue;
+      // If this paragraph is less than 25 characters, don't even count it.
+      if (innerText.length < 25) continue;
 
-    // Initialize readability data for the parent.
-    if (typeof parentNode.readability == 'undefined') {
-      initializeNode(parentNode);
-      candidates.push(parentNode);
+      // Initialize readability data for the parent.
+      if (typeof parentNode.readability == 'undefined') {
+        initializeNode(parentNode);
+        candidates.push(parentNode);
+      }
+
+      // Initialize readability data for the grandparent.
+      if (typeof grandParentNode.readability == 'undefined') {
+        initializeNode(grandParentNode);
+        candidates.push(grandParentNode);
+      }
+
+      var contentScore = 0;
+
+      // Add a point for the paragraph itself as a base. */
+      ++contentScore;
+
+      // Add points for any commas within this paragraph */
+      contentScore += innerText.replace('，', ',').split(',').length;
+
+      // For every 100 characters in this paragraph, add another point. Up to 3 points. */
+      contentScore += Math.min(Math.floor(innerText.length / 100), 3);
+
+      // Add the score to the parent. The grandparent gets half. */
+      parentNode.readability.contentScore += contentScore;
+      grandParentNode.readability.contentScore += contentScore / 2;
     }
-
-    // Initialize readability data for the grandparent.
-    if (typeof grandParentNode.readability == 'undefined') {
-      initializeNode(grandParentNode);
-      candidates.push(grandParentNode);
-    }
-
-    var contentScore = 0;
-
-    // Add a point for the paragraph itself as a base. */
-    ++contentScore;
-
-    // Add points for any commas within this paragraph */
-    contentScore += innerText.replace('，', ',').split(',').length;
-
-    // For every 100 characters in this paragraph, add another point. Up to 3 points. */
-    contentScore += Math.min(Math.floor(innerText.length / 100), 3);
-
-    // Add the score to the parent. The grandparent gets half. */
-    parentNode.readability.contentScore += contentScore;
-    grandParentNode.readability.contentScore += contentScore / 2;
   }
 
 
@@ -213,40 +215,43 @@ var grabArticle = module.exports.grabArticle = (document, preserveUnlikelyCandid
   articleContent.id = 'readability-content';
   var siblingScoreThreshold = Math.max(10, topCandidate.readability.contentScore * 0.2);
   var siblingNodes = topCandidate.parentNode.childNodes;
-  for (var i = 0, il = siblingNodes.length; i < il; i++) {
-    var siblingNode = siblingNodes[i];
-    var append = false;
 
-    dbg('Looking at sibling node: ' + siblingNode + ' (' + siblingNode.className + ':' + siblingNode.id + ')' + ((typeof siblingNode.readability != 'undefined') ? (' with score ' + siblingNode.readability.contentScore) : ''));
-    dbg('Sibling has score ' + (siblingNode.readability ? siblingNode.readability.contentScore : 'Unknown'));
+  if (siblingNodes.length < 5000) {
+    for (var i = 0, il = siblingNodes.length; i < il; i++) {
+      var siblingNode = siblingNodes[i];
+      var append = false;
 
-    if (siblingNode === topCandidate) {
-      append = true;
-    }
+      dbg('Looking at sibling node: ' + siblingNode + ' (' + siblingNode.className + ':' + siblingNode.id + ')' + ((typeof siblingNode.readability != 'undefined') ? (' with score ' + siblingNode.readability.contentScore) : ''));
+      dbg('Sibling has score ' + (siblingNode.readability ? siblingNode.readability.contentScore : 'Unknown'));
 
-    if (typeof siblingNode.readability != 'undefined' && siblingNode.readability.contentScore >= siblingScoreThreshold) {
-      append = true;
-    }
-
-    if (siblingNode.nodeName == 'P') {
-      var linkDensity = getLinkDensity(siblingNode);
-      var nodeContent = getInnerText(siblingNode);
-      var nodeLength = nodeContent.length;
-
-      if (nodeLength > 80 && linkDensity < 0.25) {
-        append = true;
-      } else if (nodeLength < 80 && linkDensity === 0 && nodeContent.search(/\.( |$)/) !== -1) {
+      if (siblingNode === topCandidate) {
         append = true;
       }
-    }
 
-    if (append) {
-      dbg("Appending node: " + siblingNode);
+      if (typeof siblingNode.readability != 'undefined' && siblingNode.readability.contentScore >= siblingScoreThreshold) {
+        append = true;
+      }
 
-      /* Append sibling and subtract from our list because it removes the node when you append to another node */
-      articleContent.appendChild(siblingNode);
-      i--;
-      il--;
+      if (siblingNode.nodeName == 'P') {
+        var linkDensity = getLinkDensity(siblingNode);
+        var nodeContent = getInnerText(siblingNode);
+        var nodeLength = nodeContent.length;
+
+        if (nodeLength > 80 && linkDensity < 0.25) {
+          append = true;
+        } else if (nodeLength < 80 && linkDensity === 0 && nodeContent.search(/\.( |$)/) !== -1) {
+          append = true;
+        }
+      }
+
+      if (append) {
+        dbg("Appending node: " + siblingNode);
+
+        /* Append sibling and subtract from our list because it removes the node when you append to another node */
+        articleContent.appendChild(siblingNode);
+        i--;
+        il--;
+      }
     }
   }
 
