@@ -64,6 +64,11 @@ class Readability {
 
 var read = (html) => {
   return new Promise((resolve, reject) => {
+    // Reject to parse extremely long HTMLs as they hang up the server
+    if (html.length > 1000000) {
+      reject();
+      return;
+    }
     jsdom.env({
       html,
       done: (err, window) => {
